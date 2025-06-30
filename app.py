@@ -7,8 +7,7 @@ st.title("📨 Customer Message Classifier")
 st.write("Classify incoming customer messages into a relevant category using a local LLM.")
 
 HF_TOKEN = st.secrets["HF_TOKEN"]
-API_URL = "https://api-inference.huggingface.co/models/tiiuae/falcon-7b-instruct"
-
+API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 
 # Build the classification prompt
 def build_prompt(msg):
