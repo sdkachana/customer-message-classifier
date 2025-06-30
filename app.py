@@ -4,7 +4,7 @@ import requests
 st.set_page_config(page_title="Customer Message Classifier", layout="centered")
 
 st.title("📨 Customer Message Classifier")
-st.write("Classify incoming customer messages into a relevant category using a local LLM.")
+st.write("Classify incoming customer messages into a relevant category using a free Hugging Face LLM.")
 
 HF_TOKEN = st.secrets["HF_TOKEN"]
 API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
@@ -83,7 +83,7 @@ Answer: Disbursement Delay
 Message: "{msg}"
 Answer:"""
 
-# Call Hugging Face API
+# Call Hugging Face Inference API
 def classify_with_llm(msg):
     prompt = build_prompt(msg)
     headers = {
@@ -104,8 +104,8 @@ def classify_with_llm(msg):
         response.raise_for_status()
         result = response.json()
 
-        if isinstance(result, list) and "generated_text" in result[0]:
-            text = result[0]["generated_text"]
+        if isinstance(result, dict) and "generated_text" in result:
+            text = result["generated_text"]
             answer = text.split("Answer:")[-1].strip()
             return answer
         else:
