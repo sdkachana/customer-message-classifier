@@ -1,25 +1,22 @@
 import streamlit as st
-from huggingface_hub import InferenceClient
+import requests
 
-# Hugging Face model (runs on cloud, not your local machine)
-client = InferenceClient("OpenAssistant/oasst-sft-1-pythia-12b", token=st.secrets["HF_TOKEN"])
-
-# Page setup
 st.set_page_config(page_title="Customer Message Classifier", layout="centered")
-st.title("🧠 Customer Message Classifier (LLM-Powered)")
-st.markdown("Classify customer support messages into one of 35 banking categories using a powerful LLM.")
 
-# Input box
-msg = st.text_area("📩 Enter a customer message below:", height=150)
+st.title("📨 Customer Message Classifier")
+st.write("Classify incoming customer messages into a relevant category using a local LLM.")
 
-# Function to build the prompt (based on your code)
+HF_TOKEN = st.secrets["HF_TOKEN"]
+API_URL = "https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta"
+
+# Build the classification prompt
 def build_prompt(msg):
     return f"""
 You are a highly trained AI support assistant working for a large banking customer support center. Customers may contact via email, chatbot, mobile app, or social media. Messages may be short, vague, appreciative, angry, confused, or demanding.
 
 Your job is to classify **each customer message into exactly ONE most relevant category** from the list below.
 
---- 
+---
 
 Use your judgment to apply these rules if necessary:
 
@@ -36,7 +33,42 @@ Use your judgment to apply these rules if necessary:
 
 ---
 
-[CATEGORY LIST OMITTED HERE TO KEEP THE PROMPT SHORT FOR API]
+### CATEGORIES (35 total):
+- Loan Application
+- Loan Eligibility
+- Disbursement Delay
+- Prepayment/Part Payment/Foreclosure
+- Foreclosure Refund/Extra EMI Refund
+- Interest Rate Query
+- EMI Bounce
+- EMI Schedule Change
+- EMI Overcharge/Error
+- Loan Top-Up Request
+- Balance Transfer
+- Loan Rejection
+- CIBIL/Score Concern
+- Document Submission
+- Document Return Query
+- KYC Expiry/Update
+- Statement Request
+- NOC/Loan Closure
+- Account Statement Request
+- Address/Mobile Update
+- Login/Netbanking Issue
+- Duplicate Login Alert/Security Concern
+- General Inquiry
+- Customer Complaint
+- Escalation/Grievance Request
+- Technical Issue
+- Branch Visit Request
+- Branch/Staff/Service Feedback
+- Appreciation/Positive Feedback
+- Registration
+- Contact Assistance
+- Card Lost/Block Request
+- Social Media Escalation
+- Frustrated/Negative Tone (Unclear Context)
+- Unclassified
 
 ---
 
@@ -48,32 +80,47 @@ Answer: Frustrated/Negative Tone (Unclear Context)
 Message: "Loan approved last week but no disbursement yet"
 Answer: Disbursement Delay
 
-Message: "You deducted EMI even after loan closure"
-Answer: Foreclosure Refund/Extra EMI Refund
-
-Message: "When do I get my documents back?"
-Answer: Document Return Query
-
-Message: "Need escalation matrix or contact of nodal officer"
-Answer: Escalation/Grievance Request
-
-Message: "Login alert from unknown device – not me"
-Answer: Duplicate Login Alert/Security Concern
-
-Message: "Thank you so much for resolving this!"
-Answer: Appreciation/Positive Feedback
-
 Message: "{msg}"
 Answer:"""
 
-# LLM call
+# Call Hugging Face API
 def classify_with_llm(msg):
     prompt = build_prompt(msg)
-    response = client.text_generation(prompt, max_new_tokens=30, temperature=0.3, stop_sequences=["\n"])
-    return response.strip()
+    headers = {
+        "Authorization": f"Bearer {HF_TOKEN}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "inputs": prompt,
+        "parameters": {
+            "max_new_tokens": 30,
+            "temperature": 0.3,
+            "stop": ["\n"]
+        }
+    }
 
-# Submit button
-if st.button("🚀 Classify"):
-    with st.spinner("Classifying with Phi-3..."):
-        category = classify_with_llm(msg)
-        st.success(f"**Predicted Category:** {category}")
+    try:
+        response = requests.post(API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+        if isinstance(result, list) and "generated_text" in result[0]:
+            text = result[0]["generated_text"]
+            answer = text.split("Answer:")[-1].strip()
+            return answer
+        else:
+            return "❌ Unable to classify. Model did not return expected output."
+
+    except Exception as e:
+        return f"❌ Error: {str(e)}"
+
+# UI
+msg = st.text_area("✉️ Enter customer message here:")
+
+if st.button("Classify Message"):
+    if not msg.strip():
+        st.warning("Please enter a message.")
+    else:
+        with st.spinner("Classifying..."):
+            category = classify_with_llm(msg)
+        st.success(f"🔖 Predicted Category:\n\n**{category}**")
