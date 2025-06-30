@@ -2,7 +2,7 @@ import streamlit as st
 from huggingface_hub import InferenceClient
 
 # Hugging Face model (runs on cloud, not your local machine)
-client = InferenceClient("HuggingFaceH4/zephyr-7b-beta", token=st.secrets["HF_TOKEN"])
+client = InferenceClient("mistralai/Mistral-7B-Instruct-v0.1", token=st.secrets["HF_TOKEN"])
 
 # Page setup
 st.set_page_config(page_title="Customer Message Classifier", layout="centered")
